@@ -1,7 +1,13 @@
 """Command-line interface for bookcover-wallpaper."""
 
+import asyncio
 import click
 from pathlib import Path
+
+from .sources.local import LocalSource
+from .layout import MasonryLayout
+from .image import create_wallpaper
+from .config import config
 
 
 @click.command()
@@ -79,12 +85,80 @@ def main(
       # Search for fantasy books
       bookcover-wallpaper --source search --query "best fantasy" --genre fantasy
     """
+    asyncio.run(_generate_wallpaper(
+        source, path, goodreads_csv, query, genre, limit, width, height, output
+    ))
+
+
+async def _generate_wallpaper(
+    source: str,
+    path: Path | None,
+    goodreads_csv: Path | None,
+    query: str | None,
+    genre: str | None,
+    limit: int,
+    width: int,
+    height: int,
+    output: Path,
+) -> None:
+    """Internal async function to generate wallpaper."""
     click.echo(f"Generating wallpaper from {source} source...")
     click.echo(f"Output: {output} ({width}x{height})")
-    click.echo(f"Books to include: {limit}")
+    click.echo(f"Books to include: up to {limit}")
 
-    # TODO: Implement actual generation
-    click.echo("\nNOTE: Implementation in progress")
+    # Get books from source
+    books = []
+    if source == "local":
+        if not path:
+            click.echo("Error: --path required for local source", err=True)
+            return
+        click.echo(f"Scanning directory: {path}")
+        local_source = LocalSource(path)
+        books = await local_source.get_books(limit)
+    elif source == "goodreads":
+        click.echo("Error: Goodreads source not yet implemented", err=True)
+        return
+    elif source == "search":
+        click.echo("Error: Search source not yet implemented", err=True)
+        return
+
+    if not books:
+        click.echo("Error: No books found", err=True)
+        return
+
+    click.echo(f"Found {len(books)} book covers")
+
+    # Extract cover paths
+    cover_paths = [book.cover_path for book in books if book.cover_path]
+
+    if not cover_paths:
+        click.echo("Error: No valid cover images found", err=True)
+        return
+
+    # Calculate layout
+    click.echo("Calculating masonry layout...")
+    layout = MasonryLayout(
+        width=width,
+        height=height,
+        gap=config.gap_size,
+        aspect_ratio=config.aspect_ratio,
+    )
+    layout_info = layout.calculate_layout(cover_paths)
+
+    # Create wallpaper
+    click.echo("Composing wallpaper...")
+    wallpaper = create_wallpaper(
+        layout_info=layout_info,
+        output_size=(width, height),
+        aspect_ratio=config.aspect_ratio,
+        background_color=config.background_color,
+    )
+
+    # Save to file
+    click.echo(f"Saving to {output}...")
+    wallpaper.save(output)
+
+    click.echo(f"✓ Wallpaper generated successfully: {output}")
 
 
 if __name__ == "__main__":

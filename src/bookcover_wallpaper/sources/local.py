@@ -24,8 +24,32 @@ class LocalSource:
         Returns:
             List of Book objects with local cover paths
         """
-        # TODO: Implement local directory scanning
-        # - Find image files (jpg, png)
-        # - Create Book objects with cover_path set
-        # - Extract metadata from filenames if possible
-        return []
+        image_extensions = {".jpg", ".jpeg", ".png", ".webp"}
+        books = []
+
+        # Scan directory for image files
+        if not self.directory.exists():
+            return []
+
+        for image_path in sorted(self.directory.iterdir()):
+            if len(books) >= limit:
+                break
+
+            if not image_path.is_file():
+                continue
+
+            if image_path.suffix.lower() not in image_extensions:
+                continue
+
+            # Extract title from filename (remove extension)
+            title = image_path.stem
+
+            # Create Book object
+            book = Book(
+                title=title,
+                author=None,
+                cover_path=image_path,
+            )
+            books.append(book)
+
+        return books

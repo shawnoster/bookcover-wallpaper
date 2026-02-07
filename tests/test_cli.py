@@ -16,5 +16,6 @@ def test_cli_basic():
     """Test basic CLI invocation."""
     runner = CliRunner()
     result = runner.invoke(main, ["--source", "local"])
+    # Should fail without --path
     assert result.exit_code == 0
-    assert "Implementation in progress" in result.output
+    assert "--path required for local source" in result.output

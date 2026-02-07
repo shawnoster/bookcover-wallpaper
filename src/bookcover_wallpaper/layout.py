@@ -36,18 +36,41 @@ class MasonryLayout:
         Returns:
             List of (path, (x, y), (w, h)) tuples
         """
-        # TODO: Implement masonry algorithm
-        # 1. Determine cover width based on canvas width and desired columns
-        # 2. Calculate cover height from width using 2:3 aspect ratio
-        # 3. Initialize column heights tracker
-        # 4. For each cover:
-        #    - Place in shortest column
-        #    - Update column height
-        # 5. Return list of positions and sizes
-        return []
+        if not cover_paths:
+            return []
+
+        # Calculate columns and cover dimensions
+        num_columns = self._calculate_columns()
+        cover_width = (self.width - (num_columns + 1) * self.gap) // num_columns
+        cover_height = int(cover_width * self.aspect_ratio[1] / self.aspect_ratio[0])
+
+        # Initialize column heights
+        column_heights = [self.gap] * num_columns
+
+        layout = []
+        for cover_path in cover_paths:
+            # Find shortest column
+            shortest_col = min(range(num_columns), key=lambda i: column_heights[i])
+
+            # Calculate position
+            x = self.gap + shortest_col * (cover_width + self.gap)
+            y = column_heights[shortest_col]
+
+            # Add to layout
+            layout.append((cover_path, (x, y), (cover_width, cover_height)))
+
+            # Update column height
+            column_heights[shortest_col] += cover_height + self.gap
+
+        return layout
 
     def _calculate_columns(self) -> int:
         """Calculate optimal number of columns for the canvas width."""
-        # TODO: Calculate based on width
-        # Typical cover width might be 200-300px
-        return 6
+        # Target cover width: 200-250px for good visibility
+        target_cover_width = 225
+
+        # Calculate columns based on canvas width
+        # Account for gaps: width = (n * cover_width) + ((n + 1) * gap)
+        num_columns = max(1, (self.width + self.gap) // (target_cover_width + self.gap))
+
+        return num_columns
