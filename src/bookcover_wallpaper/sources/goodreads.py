@@ -3,6 +3,7 @@
 from pathlib import Path
 import csv
 from datetime import datetime
+import asyncio
 import httpx
 from bs4 import BeautifulSoup
 from .base import Book
@@ -58,7 +59,7 @@ class GoodreadsSource:
             return []
 
         books: list[Book] = []
-        read_books: list[tuple[datetime | None, Book]] = []
+        read_books: list[tuple[datetime | None, Book, str | None]] = []
 
         with open(csv_path, encoding="utf-8") as f:
             reader = csv.DictReader(f)
@@ -73,11 +74,6 @@ class GoodreadsSource:
 
                 # Get cover URL if available
                 cover_url = row.get("Book Cover", "") or row.get("Cover", "")
-                if not cover_url:
-                    # Construct Goodreads cover URL from Book ID if available
-                    book_id = row.get("Book Id", "")
-                    if book_id:
-                        cover_url = f"https://images-na.ssl-images-amazon.com/images/S/compressed.photo.goodreads.com/books/{book_id}.jpg"
 
                 # Filter to "read" books (not "to-read" or "currently-reading")
                 shelf = row.get("Exclusive Shelf", "").lower()
@@ -97,21 +93,31 @@ class GoodreadsSource:
                         except ValueError:
                             pass
 
-                # Create Book object
+                # Create Book object (without cover_url yet)
                 book = Book(
                     title=title,
                     author=author or None,
                     isbn=isbn or None,
-                    cover_url=cover_url or None,
+                    cover_url=None,
                 )
 
-                read_books.append((date_read, book))
+                read_books.append((date_read, book, cover_url))
 
         # Sort by date read (most recent first)
         read_books.sort(key=lambda x: x[0] if x[0] else datetime.min, reverse=True)
 
-        # Extract books and apply limit
-        books = [book for _, book in read_books[:limit]]
+        # Apply limit and lookup missing covers by ISBN
+        for date_read, book, cover_url in read_books[:limit]:
+            # If CSV provided a cover URL, use it
+            if cover_url:
+                book.cover_url = cover_url
+            # Otherwise, try ISBN lookup
+            elif book.isbn:
+                looked_up_url = await self._lookup_cover_by_isbn(book.isbn)
+                if looked_up_url:
+                    book.cover_url = looked_up_url
+
+            books.append(book)
 
         return books
 
@@ -185,3 +191,62 @@ class GoodreadsSource:
             print(f"Warning: Failed to fetch Goodreads RSS feed: {e}")
 
         return books
+
+    async def _lookup_cover_by_isbn(self, isbn: str) -> str | None:
+        """Look up cover URL by ISBN using Google Books API.
+
+        Args:
+            isbn: ISBN-10 or ISBN-13
+
+        Returns:
+            Cover URL or None if not found
+        """
+        if not isbn:
+            return None
+
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                # Try Google Books first
+                url = f"https://www.googleapis.com/books/v1/volumes?q=isbn:{isbn}"
+                response = await client.get(url)
+                response.raise_for_status()
+                data = response.json()
+
+                items = data.get("items", [])
+                if items:
+                    volume_info = items[0].get("volumeInfo", {})
+                    image_links = volume_info.get("imageLinks", {})
+                    cover_url = (
+                        image_links.get("large")
+                        or image_links.get("medium")
+                        or image_links.get("thumbnail")
+                    )
+
+                    if cover_url:
+                        # Upgrade to HTTPS
+                        if cover_url.startswith("http://"):
+                            cover_url = cover_url.replace("http://", "https://")
+                        return cover_url
+
+        except Exception:
+            pass  # Silently fail, will try Open Library next
+
+        try:
+            # Try Open Library as fallback
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                url = f"https://openlibrary.org/api/books?bibkeys=ISBN:{isbn}&format=json&jscmd=data"
+                response = await client.get(url)
+                response.raise_for_status()
+                data = response.json()
+
+                book_data = data.get(f"ISBN:{isbn}", {})
+                cover = book_data.get("cover", {})
+                cover_url = cover.get("large") or cover.get("medium") or cover.get("small")
+
+                if cover_url:
+                    return cover_url
+
+        except Exception:
+            pass  # Silently fail
+
+        return None
