@@ -78,8 +78,18 @@ class MasonryLayout:
             target_rows = 3
         elif num_books <= 20:
             target_rows = 4
-        else:
+        elif num_books <= 30:
             target_rows = 5
+        elif num_books <= 40:
+            target_rows = 6
+        elif num_books <= 50:
+            target_rows = 7
+        elif num_books <= 60:
+            target_rows = 8
+        elif num_books <= 70:
+            target_rows = 9
+        else:
+            target_rows = 10
 
         # Calculate ideal cover height to fit target rows
         # height = (rows * cover_height) + ((rows + 1) * gap)

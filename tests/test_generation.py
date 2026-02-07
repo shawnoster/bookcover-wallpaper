@@ -90,8 +90,17 @@ def test_masonry_layout_adaptive_rows():
     # With even more books, covers should be even smaller
     assert height_25 < height_18, "25 books should have smaller covers than 18 books"
 
+    # Test with 50 books (should target 7 rows)
+    num_cols_50, width_50, height_50 = layout._calculate_optimal_layout(50)
+    assert height_50 < height_25, "50 books should have smaller covers than 25 books"
+
+    # Test with 80 books (should target 10 rows)
+    num_cols_80, width_80, height_80 = layout._calculate_optimal_layout(80)
+    assert height_80 < height_50, "80 books should have smaller covers than 50 books"
+
     # All should maintain aspect ratio
-    for w, h in [(width_12, height_12), (width_18, height_18), (width_25, height_25)]:
+    for w, h in [(width_12, height_12), (width_18, height_18), (width_25, height_25),
+                 (width_50, height_50), (width_80, height_80)]:
         ratio = w / h
         expected_ratio = 2 / 3
         assert abs(ratio - expected_ratio) < 0.01
