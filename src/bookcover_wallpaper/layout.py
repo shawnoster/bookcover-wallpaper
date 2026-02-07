@@ -91,41 +91,41 @@ class MasonryLayout:
         else:
             target_rows = 10
 
-        # Calculate ideal cover height to fit target rows
-        # height = (rows * cover_height) + ((rows + 1) * gap)
+        # Start with cover size that fits target_rows vertically
         available_height = self.height - ((target_rows + 1) * self.gap)
-        target_cover_height = available_height // target_rows
-
-        # Calculate cover width from height using aspect ratio
-        target_cover_width = int(target_cover_height * self.aspect_ratio[0] / self.aspect_ratio[1])
-
-        # Calculate how many columns we can fit horizontally
-        # width = (cols * cover_width) + ((cols + 1) * gap)
-        max_columns = max(1, (self.width + self.gap) // (target_cover_width + self.gap))
-
-        # Limit columns to ensure each column has enough books to fill vertically
-        # We want at least target_rows books per column on average for good coverage
-        # Use a factor of 0.8 to allow some variation in masonry placement
-        ideal_books_per_column = target_rows * 0.8
-        max_columns_for_books = max(1, int(num_books / ideal_books_per_column))
-
-        num_columns = min(max_columns, max_columns_for_books)
-
-        # Calculate actual maximum books that will be in any column (ceiling division)
-        max_books_per_column = (num_books + num_columns - 1) // num_columns
-
-        # Recalculate cover size to ensure max_books_per_column books fit vertically
-        available_height = self.height - ((max_books_per_column + 1) * self.gap)
-        cover_height = available_height // max_books_per_column
-
-        # Recalculate width from height to maintain aspect ratio
+        cover_height = available_height // target_rows
         cover_width = int(cover_height * self.aspect_ratio[0] / self.aspect_ratio[1])
 
-        # Verify we don't exceed canvas width with this many columns
-        total_width = (num_columns * cover_width) + ((num_columns + 1) * self.gap)
-        if total_width > self.width:
-            # Covers are too wide, recalculate from width constraint
-            cover_width = (self.width - (num_columns + 1) * self.gap) // num_columns
-            cover_height = int(cover_width * self.aspect_ratio[1] / self.aspect_ratio[0])
+        # Calculate how many columns fit horizontally
+        num_columns = max(1, (self.width + self.gap) // (cover_width + self.gap))
+
+        # Check if we have enough capacity (columns * rows >= books)
+        capacity = num_columns * target_rows
+
+        if capacity < num_books:
+            # Not enough capacity - need to either add columns or shrink covers
+            # Calculate minimum columns needed
+            min_columns = (num_books + target_rows - 1) // target_rows
+
+            if min_columns > num_columns:
+                # Need more columns - recalculate cover size from width constraint
+                num_columns = min_columns
+                cover_width = (self.width - (num_columns + 1) * self.gap) // num_columns
+                cover_height = int(cover_width * self.aspect_ratio[1] / self.aspect_ratio[0])
+        else:
+            # We have extra capacity - can make covers larger to fill width
+            # Recalculate based on width constraint
+            width_based_cover_width = (self.width - (num_columns + 1) * self.gap) // num_columns
+            width_based_cover_height = int(width_based_cover_width * self.aspect_ratio[1] / self.aspect_ratio[0])
+
+            # Check if larger covers still maintain reasonable capacity
+            # Allow covers to be taller as long as capacity >= num_books
+            new_capacity_rows = (self.height - ((target_rows + 2) * self.gap)) // width_based_cover_height
+            new_capacity = num_columns * new_capacity_rows
+
+            if new_capacity >= num_books:
+                # Larger covers still work
+                cover_width = width_based_cover_width
+                cover_height = width_based_cover_height
 
         return num_columns, cover_width, cover_height
