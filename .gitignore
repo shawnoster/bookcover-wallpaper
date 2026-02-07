@@ -14,3 +14,6 @@ wheels/
 *.png
 *.jpg
 *.jpeg
+
+# Allow example images in docs
+!docs/*.png

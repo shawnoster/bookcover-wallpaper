@@ -2,6 +2,8 @@
 
 Generate beautiful landscape wallpapers from tiled book covers using Goodreads, web search, or local images.
 
+![Example wallpaper generated from 30 recently read books on Goodreads](docs/example.png)
+
 ## Features
 
 - **Multiple sources**: Goodreads reading history, web search, or local directory
