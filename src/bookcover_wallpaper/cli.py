@@ -5,6 +5,9 @@ import click
 from pathlib import Path
 
 from .sources.local import LocalSource
+from .sources.goodreads import GoodreadsSource
+from .sources.search import SearchSource
+from .covers import CoverManager
 from .layout import MasonryLayout
 from .image import create_wallpaper
 from .config import config
@@ -116,11 +119,31 @@ async def _generate_wallpaper(
         local_source = LocalSource(path)
         books = await local_source.get_books(limit)
     elif source == "goodreads":
-        click.echo("Error: Goodreads source not yet implemented", err=True)
-        return
+        if not goodreads_csv:
+            click.echo("Error: --goodreads-csv required for goodreads source", err=True)
+            return
+        click.echo(f"Parsing Goodreads CSV: {goodreads_csv}")
+        goodreads_source = GoodreadsSource(goodreads_csv)
+        books = await goodreads_source.get_books(limit)
+
+        # Download covers for Goodreads books
+        if books:
+            click.echo(f"Downloading {len(books)} book covers...")
+            cover_manager = CoverManager(config.cache_dir)
+            books = await cover_manager.download_covers(books)
     elif source == "search":
-        click.echo("Error: Search source not yet implemented", err=True)
-        return
+        if not query:
+            click.echo("Error: --query required for search source", err=True)
+            return
+        click.echo(f"Searching for: {query}" + (f" (genre: {genre})" if genre else ""))
+        search_source = SearchSource(query, genre)
+        books = await search_source.get_books(limit)
+
+        # Download covers for search results
+        if books:
+            click.echo(f"Downloading {len(books)} book covers...")
+            cover_manager = CoverManager(config.cache_dir)
+            books = await cover_manager.download_covers(books)
 
     if not books:
         click.echo("Error: No books found", err=True)
