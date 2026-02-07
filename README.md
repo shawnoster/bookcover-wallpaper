@@ -21,9 +21,6 @@ cd bookcover-wallpaper
 
 # Install with uv
 uv sync
-
-# Or install from PyPI
-uv pip install bookcover-wallpaper
 ```
 
 ## Usage
@@ -127,12 +124,6 @@ uv run mypy src/
 # Install in development mode
 uv sync --dev
 ```
-
-## Status
-
-🚧 **In Development** - Core functionality being implemented
-
-See the project tracker for current status and roadmap.
 
 ## License
 
