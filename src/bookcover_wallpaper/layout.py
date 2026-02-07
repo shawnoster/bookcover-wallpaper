@@ -39,10 +39,10 @@ class MasonryLayout:
         if not cover_paths:
             return []
 
-        # Calculate columns and cover dimensions
-        num_columns = self._calculate_columns()
-        cover_width = (self.width - (num_columns + 1) * self.gap) // num_columns
-        cover_height = int(cover_width * self.aspect_ratio[1] / self.aspect_ratio[0])
+        num_books = len(cover_paths)
+
+        # Calculate optimal layout based on book count
+        num_columns, cover_width, cover_height = self._calculate_optimal_layout(num_books)
 
         # Initialize column heights
         column_heights = [self.gap] * num_columns
@@ -64,13 +64,37 @@ class MasonryLayout:
 
         return layout
 
-    def _calculate_columns(self) -> int:
-        """Calculate optimal number of columns for the canvas width."""
-        # Target cover width: 200-250px for good visibility
-        target_cover_width = 225
+    def _calculate_optimal_layout(self, num_books: int) -> tuple[int, int, int]:
+        """Calculate optimal columns and cover size based on book count.
 
-        # Calculate columns based on canvas width
-        # Account for gaps: width = (n * cover_width) + ((n + 1) * gap)
+        Args:
+            num_books: Number of books to display
+
+        Returns:
+            Tuple of (num_columns, cover_width, cover_height)
+        """
+        # Determine target rows based on book count
+        if num_books <= 12:
+            target_rows = 3
+        elif num_books <= 20:
+            target_rows = 4
+        else:
+            target_rows = 5
+
+        # Calculate ideal cover height to fit target rows
+        # height = (rows * cover_height) + ((rows + 1) * gap)
+        available_height = self.height - ((target_rows + 1) * self.gap)
+        target_cover_height = available_height // target_rows
+
+        # Calculate cover width from height using aspect ratio
+        target_cover_width = int(target_cover_height * self.aspect_ratio[0] / self.aspect_ratio[1])
+
+        # Calculate how many columns we can fit
+        # width = (cols * cover_width) + ((cols + 1) * gap)
         num_columns = max(1, (self.width + self.gap) // (target_cover_width + self.gap))
 
-        return num_columns
+        # Recalculate actual dimensions based on columns
+        cover_width = (self.width - (num_columns + 1) * self.gap) // num_columns
+        cover_height = int(cover_width * self.aspect_ratio[1] / self.aspect_ratio[0])
+
+        return num_columns, cover_width, cover_height

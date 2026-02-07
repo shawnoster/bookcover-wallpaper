@@ -70,6 +70,33 @@ def test_masonry_layout():
         assert abs(ratio - expected_ratio) < 0.01
 
 
+def test_masonry_layout_adaptive_rows():
+    """Test that layout adapts rows based on book count."""
+    layout = MasonryLayout(width=1920, height=1080, gap=4)
+
+    # Test with 12 books (should target 3 rows)
+    covers_12 = [Path(f"/tmp/cover_{i}.jpg") for i in range(12)]
+    num_cols_12, width_12, height_12 = layout._calculate_optimal_layout(12)
+    assert num_cols_12 > 0
+    assert width_12 > 0 and height_12 > 0
+
+    # Test with 18 books (should target 4 rows)
+    num_cols_18, width_18, height_18 = layout._calculate_optimal_layout(18)
+    # With more books, covers should be smaller
+    assert height_18 < height_12, "18 books should have smaller covers than 12 books"
+
+    # Test with 25 books (should target 5 rows)
+    num_cols_25, width_25, height_25 = layout._calculate_optimal_layout(25)
+    # With even more books, covers should be even smaller
+    assert height_25 < height_18, "25 books should have smaller covers than 18 books"
+
+    # All should maintain aspect ratio
+    for w, h in [(width_12, height_12), (width_18, height_18), (width_25, height_25)]:
+        ratio = w / h
+        expected_ratio = 2 / 3
+        assert abs(ratio - expected_ratio) < 0.01
+
+
 def test_create_wallpaper(tmp_path):
     """Test wallpaper creation."""
     # Create test images
