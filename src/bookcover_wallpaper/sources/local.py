@@ -25,7 +25,7 @@ class LocalSource:
             List of Book objects with local cover paths
         """
         image_extensions = {".jpg", ".jpeg", ".png", ".webp"}
-        books = []
+        books: list[Book] = []
 
         # Scan directory for image files
         if not self.directory.exists():

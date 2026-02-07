@@ -72,20 +72,21 @@ def create_wallpaper(
     # Process each cover
     for cover_path, (x, y), (width, height) in layout_info:
         try:
-            # Load image
-            with Image.open(cover_path) as img:
-                # Convert to RGB if needed
-                if img.mode != "RGB":
-                    img = img.convert("RGB")
+            # Load and process image
+            img: Image.Image = Image.open(cover_path)
 
-                # Crop to aspect ratio
-                img = crop_to_aspect_ratio(img, aspect_ratio)
+            # Convert to RGB if needed
+            if img.mode != "RGB":
+                img = img.convert("RGB")
 
-                # Resize to target dimensions
-                img = resize_image(img, (width, height))
+            # Crop to aspect ratio
+            img = crop_to_aspect_ratio(img, aspect_ratio)
 
-                # Paste onto canvas
-                canvas.paste(img, (x, y))
+            # Resize to target dimensions
+            img = resize_image(img, (width, height))
+
+            # Paste onto canvas
+            canvas.paste(img, (x, y))
 
         except Exception as e:
             # Skip covers that fail to load
