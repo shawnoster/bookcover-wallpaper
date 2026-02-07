@@ -36,6 +36,20 @@ bookcover-wallpaper --source local --path ~/book-covers/ --output wallpaper.png
 
 ### Goodreads Recently Read
 
+**Option 1: RSS Feed (Recommended - No Export Needed!)**
+
+Use your Goodreads user ID:
+
+```bash
+# Your user ID is in your profile URL: goodreads.com/user/show/USER_ID
+bookcover-wallpaper --source goodreads --goodreads-user-id 12345678 --limit 20
+
+# Use a different shelf (currently-reading, to-read, etc.)
+bookcover-wallpaper --source goodreads --goodreads-user-id 12345678 --goodreads-shelf currently-reading
+```
+
+**Option 2: CSV Export**
+
 1. Export your Goodreads library (Settings → Import/Export → Export Library)
 2. Generate wallpaper:
 
@@ -60,6 +74,8 @@ bookcover-wallpaper --source search --query "popular science fiction" --genre "s
 - `--source`: Source of book covers (local, goodreads, search)
 - `--path`: Path to directory with covers (local source)
 - `--goodreads-csv`: Path to Goodreads CSV export (goodreads source)
+- `--goodreads-user-id`: Goodreads user ID or RSS feed URL (goodreads source)
+- `--goodreads-shelf`: Goodreads shelf to read from (default: read)
 - `--query`: Search query for books (search source)
 - `--genre`: Genre filter, comma-separated (search source)
 - `--limit`: Number of books to include (default: 18)

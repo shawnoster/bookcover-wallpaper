@@ -31,6 +31,17 @@ from .config import config
     help="Path to Goodreads CSV export (for goodreads source)",
 )
 @click.option(
+    "--goodreads-user-id",
+    type=str,
+    help="Goodreads user ID or RSS feed URL (for goodreads source)",
+)
+@click.option(
+    "--goodreads-shelf",
+    type=str,
+    default="read",
+    help="Goodreads shelf to read from (default: read)",
+)
+@click.option(
     "--query",
     type=str,
     help="Search query for books (for search source)",
@@ -68,6 +79,8 @@ def main(
     source: str,
     path: Path | None,
     goodreads_csv: Path | None,
+    goodreads_user_id: str | None,
+    goodreads_shelf: str,
     query: str | None,
     genre: str | None,
     limit: int,
@@ -82,14 +95,21 @@ def main(
       # Local directory
       bookcover-wallpaper --source local --path ~/book-covers/
 
-      # Goodreads recent reads
+      # Goodreads from CSV export
       bookcover-wallpaper --source goodreads --goodreads-csv ~/goodreads.csv
+
+      # Goodreads from RSS feed (user ID)
+      bookcover-wallpaper --source goodreads --goodreads-user-id 12345678
+
+      # Goodreads from RSS feed (specific shelf)
+      bookcover-wallpaper --source goodreads --goodreads-user-id 12345678 --goodreads-shelf currently-reading
 
       # Search for fantasy books
       bookcover-wallpaper --source search --query "best fantasy" --genre fantasy
     """
     asyncio.run(_generate_wallpaper(
-        source, path, goodreads_csv, query, genre, limit, width, height, output
+        source, path, goodreads_csv, goodreads_user_id, goodreads_shelf,
+        query, genre, limit, width, height, output
     ))
 
 
@@ -97,6 +117,8 @@ async def _generate_wallpaper(
     source: str,
     path: Path | None,
     goodreads_csv: Path | None,
+    goodreads_user_id: str | None,
+    goodreads_shelf: str,
     query: str | None,
     genre: str | None,
     limit: int,
@@ -119,11 +141,18 @@ async def _generate_wallpaper(
         local_source = LocalSource(path)
         books = await local_source.get_books(limit)
     elif source == "goodreads":
-        if not goodreads_csv:
-            click.echo("Error: --goodreads-csv required for goodreads source", err=True)
+        if not goodreads_csv and not goodreads_user_id:
+            click.echo("Error: --goodreads-csv or --goodreads-user-id required for goodreads source", err=True)
             return
-        click.echo(f"Parsing Goodreads CSV: {goodreads_csv}")
-        goodreads_source = GoodreadsSource(goodreads_csv)
+
+        # Prefer user ID (RSS) over CSV if both provided
+        if goodreads_user_id:
+            click.echo(f"Fetching Goodreads RSS feed (user: {goodreads_user_id}, shelf: {goodreads_shelf})")
+            goodreads_source = GoodreadsSource(goodreads_user_id, shelf=goodreads_shelf)
+        else:
+            click.echo(f"Parsing Goodreads CSV: {goodreads_csv}")
+            goodreads_source = GoodreadsSource(goodreads_csv)
+
         books = await goodreads_source.get_books(limit)
 
         # Download covers for Goodreads books

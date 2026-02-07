@@ -55,6 +55,78 @@ async def test_goodreads_limit(tmp_path):
     assert len(books) == 5
 
 
+@pytest.mark.asyncio
+@patch("httpx.AsyncClient")
+async def test_goodreads_rss_parsing(mock_client_class):
+    """Test Goodreads RSS feed parsing."""
+    # Mock RSS response
+    rss_xml = """<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>User's bookshelf: read</title>
+    <item>
+      <title>The Hobbit</title>
+      <author_name>J.R.R. Tolkien</author_name>
+      <isbn>9780345339683</isbn>
+      <book_id>5907</book_id>
+      <book_large_image_url>https://images.gr-assets.com/books/1234567890l/5907.jpg</book_large_image_url>
+    </item>
+    <item>
+      <title>1984</title>
+      <author_name>George Orwell</author_name>
+      <isbn>9780451524935</isbn>
+      <book_id>5470</book_id>
+      <book_image_url>https://images.gr-assets.com/books/1234567890m/5470.jpg</book_image_url>
+    </item>
+  </channel>
+</rss>"""
+
+    mock_response = AsyncMock()
+    mock_response.content = rss_xml.encode()
+    mock_response.raise_for_status = AsyncMock()
+
+    # Mock the context manager
+    mock_client = AsyncMock()
+    mock_client.get.return_value = mock_response
+    mock_client.__aenter__.return_value = mock_client
+    mock_client.__aexit__.return_value = AsyncMock()
+    mock_client_class.return_value = mock_client
+
+    # Test with user ID
+    source = GoodreadsSource("12345678", shelf="read")
+    books = await source.get_books(limit=10)
+
+    assert len(books) == 2
+    assert books[0].title == "The Hobbit"
+    assert books[0].author == "J.R.R. Tolkien"
+    assert books[0].isbn == "9780345339683"
+    assert "5907" in books[0].cover_url
+
+    assert books[1].title == "1984"
+    assert books[1].author == "George Orwell"
+
+
+@pytest.mark.asyncio
+async def test_goodreads_source_detection():
+    """Test that GoodreadsSource correctly detects CSV vs RSS."""
+    from pathlib import Path
+
+    # Test CSV detection
+    csv_source = GoodreadsSource("/path/to/file.csv")
+    assert not csv_source.is_rss
+
+    csv_source2 = GoodreadsSource(Path("/path/to/file.csv"))
+    assert not csv_source2.is_rss
+
+    # Test RSS detection (user ID)
+    rss_source = GoodreadsSource("12345678")
+    assert rss_source.is_rss
+
+    # Test RSS detection (URL)
+    rss_source2 = GoodreadsSource("https://www.goodreads.com/review/list_rss/12345678")
+    assert rss_source2.is_rss
+
+
 @pytest.mark.skip(reason="Complex async mocking - tested via integration")
 @pytest.mark.asyncio
 @patch("httpx.AsyncClient")
