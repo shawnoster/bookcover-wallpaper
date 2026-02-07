@@ -99,12 +99,33 @@ class MasonryLayout:
         # Calculate cover width from height using aspect ratio
         target_cover_width = int(target_cover_height * self.aspect_ratio[0] / self.aspect_ratio[1])
 
-        # Calculate how many columns we can fit
+        # Calculate how many columns we can fit horizontally
         # width = (cols * cover_width) + ((cols + 1) * gap)
-        num_columns = max(1, (self.width + self.gap) // (target_cover_width + self.gap))
+        max_columns = max(1, (self.width + self.gap) // (target_cover_width + self.gap))
 
-        # Recalculate actual dimensions based on columns
-        cover_width = (self.width - (num_columns + 1) * self.gap) // num_columns
-        cover_height = int(cover_width * self.aspect_ratio[1] / self.aspect_ratio[0])
+        # Limit columns to ensure each column has enough books to fill vertically
+        # We want at least target_rows books per column on average for good coverage
+        # Use a factor of 0.8 to allow some variation in masonry placement
+        ideal_books_per_column = target_rows * 0.8
+        max_columns_for_books = max(1, int(num_books / ideal_books_per_column))
+
+        num_columns = min(max_columns, max_columns_for_books)
+
+        # Calculate actual maximum books that will be in any column (ceiling division)
+        max_books_per_column = (num_books + num_columns - 1) // num_columns
+
+        # Recalculate cover size to ensure max_books_per_column books fit vertically
+        available_height = self.height - ((max_books_per_column + 1) * self.gap)
+        cover_height = available_height // max_books_per_column
+
+        # Recalculate width from height to maintain aspect ratio
+        cover_width = int(cover_height * self.aspect_ratio[0] / self.aspect_ratio[1])
+
+        # Verify we don't exceed canvas width with this many columns
+        total_width = (num_columns * cover_width) + ((num_columns + 1) * self.gap)
+        if total_width > self.width:
+            # Covers are too wide, recalculate from width constraint
+            cover_width = (self.width - (num_columns + 1) * self.gap) // num_columns
+            cover_height = int(cover_width * self.aspect_ratio[1] / self.aspect_ratio[0])
 
         return num_columns, cover_width, cover_height
