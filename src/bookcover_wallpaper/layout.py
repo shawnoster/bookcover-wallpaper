@@ -1,5 +1,6 @@
 """Layout algorithms for arranging book covers."""
 
+import math
 from pathlib import Path
 from PIL import Image
 
@@ -67,8 +68,8 @@ class MasonryLayout:
     def _calculate_optimal_layout(self, num_books: int) -> tuple[int, int, int]:
         """Calculate optimal columns and cover size based on book count.
 
-        Prioritizes filling the entire canvas, accepting that some covers
-        may be clipped at the bottom for complete coverage.
+        Uses area-based calculation to ensure covers fill the entire canvas.
+        Accepts that some covers may be clipped at the bottom for full coverage.
 
         Args:
             num_books: Number of books to display
@@ -76,40 +77,25 @@ class MasonryLayout:
         Returns:
             Tuple of (num_columns, cover_width, cover_height)
         """
-        # Determine target columns based on book count
-        # More books = more columns for better distribution
-        if num_books <= 12:
-            target_columns = 5
-        elif num_books <= 20:
-            target_columns = 7
-        elif num_books <= 30:
-            target_columns = 9
-        elif num_books <= 40:
-            target_columns = 11
-        elif num_books <= 50:
-            target_columns = 13
-        else:
-            target_columns = min(16, num_books // 3)
+        ar_w, ar_h = self.aspect_ratio
+        canvas_area = self.width * self.height
 
-        # Calculate cover size to fill horizontal space
-        cover_width = (self.width - (target_columns + 1) * self.gap) // target_columns
-        cover_height = int(cover_width * self.aspect_ratio[1] / self.aspect_ratio[0])
+        # Total cover area should overfill the canvas for full coverage
+        # Higher overfill = larger covers, more clipping, denser look
+        overfill = 1.4
+        target_total_area = canvas_area * overfill
 
-        # Scale up by fixed factor to ensure full coverage with bottom clipping
-        # 1.45x makes covers larger so even shortest column extends beyond bottom
-        coverage_scale = 1.45
-        cover_height = int(cover_height * coverage_scale)
-        cover_width = int(cover_height * self.aspect_ratio[0] / self.aspect_ratio[1])
+        # Each cover has area = w * h = w * (w * ar_h/ar_w) = w² * ar_h/ar_w
+        # n covers: n * w² * ar_h/ar_w = target_total_area
+        # w = sqrt(target_total_area * ar_w / (n * ar_h))
+        cover_width = int(math.sqrt(target_total_area * ar_w / (num_books * ar_h)))
+        cover_height = int(cover_width * ar_h / ar_w)
 
-        # Recalculate actual columns that fit with scaled covers
-        actual_columns = max(1, (self.width + self.gap) // (cover_width + self.gap))
+        # Calculate columns that fit
+        num_columns = max(1, (self.width + self.gap) // (cover_width + self.gap))
 
-        # Final cover size based on actual columns
-        base_cover_width = (self.width - (actual_columns + 1) * self.gap) // actual_columns
-        base_cover_height = int(base_cover_width * self.aspect_ratio[1] / self.aspect_ratio[0])
+        # Snap cover width to fill horizontal space evenly
+        cover_width = (self.width - (num_columns + 1) * self.gap) // num_columns
+        cover_height = int(cover_width * ar_h / ar_w)
 
-        # Apply coverage scale to both dimensions to maintain aspect ratio
-        cover_width = int(base_cover_width * coverage_scale)
-        cover_height = int(base_cover_height * coverage_scale)
-
-        return actual_columns, cover_width, cover_height
+        return num_columns, cover_width, cover_height
