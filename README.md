@@ -22,7 +22,7 @@ cd bookcover-wallpaper
 # Install with uv
 uv sync
 
-# Or install from PyPI (when published)
+# Or install from PyPI
 uv pip install bookcover-wallpaper
 ```
 
